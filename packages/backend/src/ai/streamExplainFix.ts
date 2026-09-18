@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Groq from "groq-sdk";
 import type { PanelMode } from "../protocol.js";
 import { MODEL } from "./model.js";
 
@@ -11,7 +11,7 @@ const FIX_SYSTEM =
   "corrected version. If the code looks correct, say so briefly.";
 
 export interface StreamExplainFixArgs {
-  anthropic: Anthropic;
+  groq: Groq;
   mode: PanelMode;
   requestId: string;
   roomId: string;
@@ -28,7 +28,7 @@ export interface StreamExplainFixArgs {
 // document content, so they need no conflict resolution (PRD 7.3). A "fix"
 // response is prose too — it is never auto-applied to the file.
 export async function streamExplainFix({
-  anthropic,
+  groq,
   mode,
   requestId,
   roomId,
@@ -47,19 +47,23 @@ export async function streamExplainFix({
   let full = "";
 
   try {
-    const stream = anthropic.messages.stream({
+    const stream = await groq.chat.completions.create({
       model: MODEL,
       max_tokens: 1024,
-      system: mode === "explain" ? EXPLAIN_SYSTEM : FIX_SYSTEM,
-      messages: [{ role: "user", content: userContent }],
+      stream: true,
+      messages: [
+        { role: "system", content: mode === "explain" ? EXPLAIN_SYSTEM : FIX_SYSTEM },
+        { role: "user", content: userContent },
+      ],
     });
 
-    stream.on("text", (delta: string) => {
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (!delta) continue;
       full += delta;
       onToken(delta);
-    });
+    }
 
-    await stream.finalMessage();
     log(`[ai-panel-done] requestId=${requestId} room=${roomId} mode=${mode} chars=${full.length}`);
     onDone(full);
   } catch (err) {

@@ -6,7 +6,7 @@ import cors from "cors";
 import { WebSocketServer, WebSocket } from "ws";
 import { nanoid } from "nanoid";
 import * as Y from "yjs";
-import Anthropic from "@anthropic-ai/sdk";
+import Groq from "groq-sdk";
 
 import type {
   AiPanelEntry,
@@ -39,13 +39,13 @@ export interface UpdateOrigin {
 
 const PORT = Number(process.env.PORT ?? 3001);
 const REDIS_URL = process.env.REDIS_URL;
-const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
 function log(msg: string): void {
   console.log(`${new Date().toISOString()} ${msg}`);
 }
 
-const anthropic = ANTHROPIC_API_KEY ? new Anthropic({ apiKey: ANTHROPIC_API_KEY }) : null;
+const groq = GROQ_API_KEY ? new Groq({ apiKey: GROQ_API_KEY }) : null;
 
 const app = express();
 app.use(cors());
@@ -313,8 +313,8 @@ wss.on("connection", (ws: WebSocket) => {
         const requestId = `req-${randomUUID()}`;
         const isPanelRequest = msg.mode === "explain" || msg.mode === "fix";
 
-        if (!anthropic) {
-          const message = "ANTHROPIC_API_KEY is not configured on the server";
+        if (!groq) {
+          const message = "GROQ_API_KEY is not configured on the server";
           const errMsg: ServerMessage = isPanelRequest
             ? { type: "ai-panel-error", roomId: msg.roomId, requestId, message }
             : { type: "ai-error", roomId: msg.roomId, requestId, message };
@@ -326,7 +326,7 @@ wss.on("connection", (ws: WebSocket) => {
 
         if (msg.mode === "inline-generate") {
           streamInlineGeneration({
-            anthropic,
+            groq,
             room,
             requestId,
             cursorLine: msg.cursorPosition.line,
@@ -347,7 +347,7 @@ wss.on("connection", (ws: WebSocket) => {
           msg.selectionText.length > 80 ? `${msg.selectionText.slice(0, 80)}…` : msg.selectionText;
 
         streamExplainFix({
-          anthropic,
+          groq,
           mode: msg.mode,
           requestId,
           roomId: msg.roomId,
@@ -413,8 +413,6 @@ function handleDisconnect(roomId: string, userId: string, connId: string): void 
 
 server.listen(PORT, () => {
   log(
-    `[listening] port=${PORT} redis=${REDIS_URL ?? "disabled (single instance)"} aiEnabled=${Boolean(
-      anthropic
-    )}`
+    `[listening] port=${PORT} redis=${REDIS_URL ?? "disabled (single instance)"} aiEnabled=${Boolean(groq)}`
   );
 });

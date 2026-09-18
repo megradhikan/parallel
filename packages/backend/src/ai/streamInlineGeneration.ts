@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import Groq from "groq-sdk";
 import * as Y from "yjs";
 import type { Room } from "../rooms.js";
 import type { UpdateOrigin } from "../server.js";
@@ -9,7 +9,7 @@ const SYSTEM_PROMPT =
   "Output only code, no explanation, no markdown code fences.";
 
 export interface StreamInlineGenerationArgs {
-  anthropic: Anthropic;
+  groq: Groq;
   room: Room;
   requestId: string;
   cursorLine: number;
@@ -39,7 +39,7 @@ export function lineColToOffset(text: string, line: number, col: number): number
 // separate client-side "AI text" rendering path — this is the core technical
 // point of the project (PRD 3.1.6 / 7.4).
 export async function streamInlineGeneration({
-  anthropic,
+  groq,
   room,
   requestId,
   cursorLine,
@@ -61,14 +61,20 @@ export async function streamInlineGeneration({
   const origin: UpdateOrigin = { userId: "ai", excludeConnId: undefined, fromRedis: false };
 
   try {
-    const stream = anthropic.messages.stream({
+    const stream = await groq.chat.completions.create({
       model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM_PROMPT,
-      messages: [{ role: "user", content: contextWindow }],
+      stream: true,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: contextWindow },
+      ],
     });
 
-    stream.on("text", (delta: string) => {
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content;
+      if (!delta) continue;
+
       const abs = Y.createAbsolutePositionFromRelativePosition(relPos, room.doc);
       const index = abs ? abs.index : room.ytext.length;
 
@@ -78,9 +84,8 @@ export async function streamInlineGeneration({
 
       relPos = Y.createRelativePositionFromTypeIndex(room.ytext, index + delta.length);
       onToken(delta);
-    });
+    }
 
-    await stream.finalMessage();
     log(`[ai-done] requestId=${requestId} room=${room.roomId}`);
     onDone();
   } catch (err) {

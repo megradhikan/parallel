@@ -2,7 +2,7 @@
   "name": "parallel",
   "private": true,
   "version": "0.1.0",
-  "description": "Real-time collaborative code editor: Monaco with a hand-rolled Yjs CRDT binding, Redis pub/sub fanout, and two streamed Claude features.",
+  "description": "Real-time collaborative code editor: Monaco with a hand-rolled Yjs CRDT binding, Redis pub/sub fanout, and two streamed Groq features.",
   "license": "MIT",
   "repository": {
     "type": "git",

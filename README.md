@@ -2,7 +2,7 @@
 
 A real-time collaborative code editor. Multiple people edit one JavaScript file in a shared room, see each other's cursors and selections live, and get two AI features: code generated straight into the document at the cursor, and an explain/fix panel whose responses stream to everyone in the room.
 
-Monaco for the editor, Yjs for conflict-free merging, a hand-rolled binding between the two, a plain `ws` server, and Redis pub/sub so the whole thing survives more than one backend instance.
+Monaco for the editor, Yjs for conflict-free merging, a hand-rolled binding between the two, a plain `ws` server, Redis pub/sub so the whole thing survives more than one backend instance, and Groq for both streamed AI features.
 
 ```
 browser (Monaco) ──hand-rolled binding──▶ Y.Doc ──base64 update──▶ ws server ──▶ Y.Doc (authoritative)
@@ -52,7 +52,7 @@ The parser check is doing real work, not decoration — it caught a genuine bug 
 
 ```bash
 pnpm install
-cp .env.example packages/backend/.env     # add ANTHROPIC_API_KEY
+cp .env.example packages/backend/.env     # add GROQ_API_KEY
 cp .env.example packages/frontend/.env    # keep only VITE_WS_URL
 pnpm dev:backend                          # :3001
 pnpm dev:frontend                         # :5173
@@ -60,7 +60,7 @@ pnpm dev:frontend                         # :5173
 
 Open `http://localhost:5173`, click **New room**, and paste the room URL into a second browser window.
 
-Without an `ANTHROPIC_API_KEY` everything except the two AI features works; an AI request returns a clear error instead of failing silently.
+Without a `GROQ_API_KEY` everything except the two AI features works; an AI request returns a clear error instead of failing silently.
 
 | Script | What it does |
 |---|---|
@@ -82,8 +82,8 @@ pnpm test:cross-instance
 ```
 # packages/backend/.env
 PORT=3001
-ANTHROPIC_API_KEY=sk-ant-...
-# ANTHROPIC_MODEL=claude-sonnet-5      # optional override
+GROQ_API_KEY=gsk_...
+# GROQ_MODEL=openai/gpt-oss-120b       # optional override
 # REDIS_URL=redis://localhost:6379     # only needed to run >1 backend instance
 
 # packages/frontend/.env
@@ -94,7 +94,7 @@ VITE_WS_URL=ws://localhost:3001
 
 Backend on Railway (Node service + managed Redis add-on), frontend on Vercel as a static Vite build.
 
-- Railway: root `packages/backend`, start command `pnpm start`, set `ANTHROPIC_API_KEY` and `REDIS_URL`. `/health` returns 200 with instance id, uptime, and active room count.
+- Railway: root `packages/backend`, start command `pnpm start`, set `GROQ_API_KEY` and `REDIS_URL`. `/health` returns 200 with instance id, uptime, and active room count.
 - Vercel: root `packages/frontend`, build `pnpm build`, output `dist`, set `VITE_WS_URL` to the Railway service's `wss://` URL. `vercel.json` rewrites `/room/:id` to the SPA entry.
 
 ## Scope
@@ -103,10 +103,11 @@ Single shared JavaScript file per room. No file tree, no code execution, no lang
 
 ## Notes on implementation choices
 
-Three places where this departs from the spec it was built to, each deliberate:
+Four places where this departs from the spec it was built to, each deliberate:
 
 - **Remote updates apply as Yjs deltas, not as a whole-document diff.** The spec called for diffing the model's content against the `Y.Text` and applying the difference. Translating the delta's retain/insert/delete ops directly into `applyEdits` ranges is more precise: a whole-document diff collapses a remote multi-cursor edit into one large range replacement, which moves every cursor and marker inside it.
 - **Each binding instance tags transactions with a unique origin object**, not a shared string constant. Two bindings on one `Y.Doc` would otherwise ignore each other's edits — which is exactly the case the isolation harness exercises.
+- **Groq (`openai/gpt-oss-120b`) serves both AI features**, not the Anthropic API the spec named. Same streaming shape, same insertion path; it is a one-file swap in `packages/backend/src/ai/` if that changes.
 - **New rooms open onto a small seeded file** rather than an empty buffer, so a fresh room shows real syntax-highlighted code on first load.
 
 Sibling project: [Pulse](https://github.com/megradhikan/pulse), the same sync architecture applied to plain text. The `join` / `sync` / `doc-update` / `user-joined` / `user-left` / `leave` / `error` message shapes are kept compatible between the two.

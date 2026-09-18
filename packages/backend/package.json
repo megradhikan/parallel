@@ -12,10 +12,10 @@
     "test:load": "tsx scripts/loadTest.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.39.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "groq-sdk": "^0.9.1",
     "ioredis": "^5.4.2",
     "nanoid": "^5.0.9",
     "ws": "^8.18.0",
