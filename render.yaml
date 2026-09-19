@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: parallel-backend
+    runtime: node
+    plan: free
+    rootDir: packages/backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+      # Set in the Render dashboard — never committed.
+      - key: GROQ_API_KEY
+        sync: false
+      # Only needed to run more than one instance; the free plan runs one.
+      # - key: REDIS_URL
+      #   sync: false

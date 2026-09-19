@@ -11,6 +11,20 @@ browser (Monaco) ──hand-rolled binding──▶ Y.Doc ──base64 update─
                                                         (cross-instance fanout)
 ```
 
+## What it looks like
+
+![A Parallel room: two people editing one file, with the shared AI panel open](docs/room.png)
+
+Meghna's window. `cheapest` was pasted in by Priya — her caret and name tag are live on line 9 — and everything from `mostExpensive` down was streamed in by the AI at the cursor, merging with both people's edits as it arrived. The panel on the right holds the Explain response Meghna asked for, which every client in the room sees.
+
+![The same room and the same instant, from the second browser](docs/second-client.png)
+
+The same moment from Priya's browser: same document, same panel entry, Meghna's caret instead of hers.
+
+![Two Monaco editors sharing one in-memory Y.Doc with no network](docs/binding-harness.png)
+
+`/binding-test.html` — the binding under test on its own. Two Monaco instances, one in-memory `Y.Doc`, no server anywhere. Type or paste in either pane and the other must match; the header counts characters and turns red the moment they diverge.
+
 ## What is interesting here
 
 **The Monaco↔Yjs binding is hand-written** ([`useMonacoBinding.ts`](packages/frontend/src/hooks/useMonacoBinding.ts)). The official `y-monaco` package exists and works — writing it by hand is the point. Both directions run through one guard flag:
@@ -92,10 +106,12 @@ VITE_WS_URL=ws://localhost:3001
 
 ## Deploying
 
-Backend on Railway (Node service + managed Redis add-on), frontend on Vercel as a static Vite build.
+Backend on Render, frontend on Vercel as a static Vite build.
 
-- Railway: root `packages/backend`, start command `pnpm start`, set `GROQ_API_KEY` and `REDIS_URL`. `/health` returns 200 with instance id, uptime, and active room count.
-- Vercel: root `packages/frontend`, build `pnpm build`, output `dist`, set `VITE_WS_URL` to the Railway service's `wss://` URL. `vercel.json` rewrites `/room/:id` to the SPA entry.
+- Render: `render.yaml` in the repo root defines the service (root `packages/backend`, health check `/health`). Create it with **New → Blueprint**, point it at this repo, and set `GROQ_API_KEY` when prompted. `/health` returns 200 with instance id, uptime, and active room count. The free plan sleeps after 15 minutes idle, so the first room after a quiet spell takes a few seconds to wake.
+- Vercel: root `packages/frontend`, build `pnpm build`, output `dist`, with `VITE_WS_URL` set to the Render service's `wss://` URL. `vercel.json` rewrites `/room/:id` to the SPA entry.
+
+Redis is left out of the deployed setup on purpose: the free plan runs a single instance, and the pub/sub layer only earns its place once there are two. `pnpm test:cross-instance` is how that path gets exercised locally.
 
 ## Scope
 
