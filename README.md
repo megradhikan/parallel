@@ -1,5 +1,9 @@
 # Parallel
 
+**Live: [parallel-inky-theta.vercel.app](https://parallel-inky-theta.vercel.app)** · [binding harness](https://parallel-inky-theta.vercel.app/binding-test.html) · [backend health](https://parallel-backend-2x9a.onrender.com/health)
+
+Open a room, copy the URL into a second window, and edit from both. The backend sleeps after 15 minutes idle on Render's free plan, so the first room after a quiet spell takes a few seconds to wake.
+
 A real-time collaborative code editor. Multiple people edit one JavaScript file in a shared room, see each other's cursors and selections live, and get two AI features: code generated straight into the document at the cursor, and an explain/fix panel whose responses stream to everyone in the room.
 
 Monaco for the editor, Yjs for conflict-free merging, a hand-rolled binding between the two, a plain `ws` server, Redis pub/sub so the whole thing survives more than one backend instance, and Groq for both streamed AI features.
@@ -108,7 +112,7 @@ VITE_WS_URL=ws://localhost:3001
 
 Backend on Render, frontend on Vercel as a static Vite build.
 
-- Render: `render.yaml` in the repo root defines the service (root `packages/backend`, health check `/health`). Create it with **New → Blueprint**, point it at this repo, and set `GROQ_API_KEY` when prompted. `/health` returns 200 with instance id, uptime, and active room count. The free plan sleeps after 15 minutes idle, so the first room after a quiet spell takes a few seconds to wake.
+- Render: `render.yaml` in the repo root defines the service (root `packages/backend`, health check `/health`), deployed at `parallel-backend-2x9a.onrender.com`. Recreate it with **New → Blueprint**, point it at this repo, and set `GROQ_API_KEY` when prompted. `/health` returns 200 with instance id, uptime, and active room count. The free plan sleeps after 15 minutes idle, so the first room after a quiet spell takes a few seconds to wake.
 - Vercel: root `packages/frontend`, build `pnpm build`, output `dist`, with `VITE_WS_URL` set to the Render service's `wss://` URL. `vercel.json` rewrites `/room/:id` to the SPA entry.
 
 Redis is left out of the deployed setup on purpose: the free plan runs a single instance, and the pub/sub layer only earns its place once there are two. `pnpm test:cross-instance` is how that path gets exercised locally.
