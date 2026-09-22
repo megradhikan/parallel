@@ -28,6 +28,9 @@ importers:
       nanoid:
         specifier: ^5.0.9
         version: 5.1.16
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.13
       ws:
         specifier: ^8.18.0
         version: 8.21.3
@@ -50,9 +53,6 @@ importers:
       acorn:
         specifier: ^8.14.0
         version: 8.18.0
-      tsx:
-        specifier: ^4.19.2
-        version: 4.23.13
       typescript:
         specifier: ^5.7.2
         version: 5.9.3

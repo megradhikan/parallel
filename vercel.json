@@ -1,0 +1,6 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "pnpm --filter frontend build",
+  "outputDirectory": "packages/frontend/dist",
+  "rewrites": [{ "source": "/room/:roomId", "destination": "/index.html" }]
+}
